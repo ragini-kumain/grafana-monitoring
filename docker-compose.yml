@@ -1,0 +1,67 @@
+# filename: docker-compose.yml
+# Defines the complete, unified monitoring stack for both network devices and servers.
+
+services:
+  # --- Ruckus Network Monitoring Stack (InfluxDB) ---
+  influxdb:
+    image: influxdb:latest
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    restart: unless-stopped
+    networks:
+      - monitoring_net
+    # Purpose: Time-series database for storing Ruckus switch and AP metrics.
+
+  telegraf:
+    image: telegraf:latest
+    container_name: telegraf
+    volumes:
+      - ./config/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    depends_on:
+      - influxdb
+    restart: unless-stopped
+    networks:
+      - monitoring_net
+    # Purpose: Data collection agent. Polls Ruckus devices via SNMP and writes metrics to InfluxDB.
+
+  # --- Server Monitoring Stack (Prometheus) ---
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    network_mode: host
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    restart: unless-stopped
+    # Purpose: Time-series database and alerting engine for server metrics.
+
+  snmp_exporter:
+    image: prom/snmp-exporter:latest
+    container_name: snmp_exporter
+    network_mode: host
+    volumes:
+      - ./config/snmp.yml:/etc/snmp_exporter/snmp.yml
+    restart: unless-stopped
+    # Purpose: Translates SNMP from servers into a Prometheus-readable format. Scraped by Prometheus.
+
+  # --- Unified Visualization Frontend ---
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    network_mode: host
+    volumes:
+      - grafana_data:/var/lib/grafana
+    restart: unless-stopped
+    # Purpose: Visualization platform. Will connect to both InfluxDB and Prometheus as data sources.
+
+volumes:
+  # Define persistent storage volumes for databases and Grafana configuration.
+  influxdb_data: {}
+  grafana_data: {}
+
+# --- DEFINE THE CUSTOM NETWORK AT THE END OF THE FILE ---
+networks:
+  monitoring_net:
+    driver: bridge

@@ -1,0 +1,3167 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 2,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 11,
+      "panels": [],
+      "title": "Access Points ",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ef9fatdyz6328f"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ap_name"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Access Point Name"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "clients"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "No. of Clients"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "utilization"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Utilization"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "utilization"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 1
+      },
+      "id": 15,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ef9fatdyz6328f"
+          },
+          "query": "// First, get the last channel utilization for each AP\nlast_utilization = from(bucket: \"my-bucket\")\n    |> range(start: -5m)\n    |> filter(fn: (r) => r._measurement == \"ruckus_ap_metrics\" and r._field == \"channel_utilization_5ghz\")\n    |> group(columns: [\"ap_name\"])\n    |> last()\n    |> filter(fn: (r) => r._value > 75) // Find the slow APs\n    |> keep(columns: [\"ap_name\", \"_value\"])\n    |> rename(columns: {_value: \"utilization\"})\n\n// Second, get the last client count for each AP\nlast_client_count = from(bucket: \"my-bucket\")\n    |> range(start: -5m)\n    |> filter(fn: (r) => r._measurement == \"ruckus_ap_metrics\" and r._field == \"client_count\")\n    |> group(columns: [\"ap_name\"])\n    |> last()\n    |> keep(columns: [\"ap_name\", \"_value\"])\n    |> rename(columns: {_value: \"clients\"})\n\n// Join the two results together based on the AP name\njoin(\n    tables: {util: last_utilization, clients: last_client_count},\n    on: [\"ap_name\"]\n)\n|> sort(columns: [\"utilization\"], desc: true)\n|> group() ",
+          "refId": "A"
+        }
+      ],
+      "title": "Slow APs Details",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ef9fatdyz6328f"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 5,
+        "x": 12,
+        "y": 1
+      },
+      "id": 14,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ef9fatdyz6328f"
+          },
+          "query": "from(bucket: \"my-bucket\")\n  |> range(start: -5m)\n  |> filter(fn: (r) =>\n    r._measurement == \"ruckus_ap_metrics\" and\n    r._field == \"channel_utilization_5ghz\"\n  )\n  |> group(columns: [\"ap_name\"])\n  |> last()\n  |> filter(fn: (r) => r._value > 75)\n  |> group()\n  |> count()",
+          "refId": "A"
+        }
+      ],
+      "title": "Slow APs (High Utilization)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ef9fatdyz6328f"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Exact Timestamp"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ap_name"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Access Point Name"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Last Reported"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeFromNow"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "id": 13,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ef9fatdyz6328f"
+          },
+          "query": "from(bucket: \"my-bucket\")\n  |> range(start: -5m)\n  |> filter(fn: (r) =>\n    r._measurement == \"ruckus_ap_metrics\" and\n    r._field == \"status\"\n  )\n  |> group(columns: [\"ap_name\"])\n  |> last()\n  |> filter(fn: (r) => r._value == 0)\n  |> group() // Ungroup to turn the 'ap_name' tag into a column\n  |> keep(columns: [\"ap_name\", \"_time\"]) // Now this will work correctly\n  |> sort(columns: [\"ap_name\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "Offline AP Details",
+      "transformations": [
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "Last Reported",
+            "mode": "reduceRow",
+            "reduce": {
+              "include": [
+                "_time"
+              ],
+              "reducer": "last"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ef9fatdyz6328f"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 5,
+        "x": 12,
+        "y": 9
+      },
+      "id": 12,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ef9fatdyz6328f"
+          },
+          "query": "from(bucket: \"my-bucket\")\n  |> range(start: -5m)\n  |> filter(fn: (r) =>\n    r._measurement == \"ruckus_ap_metrics\" and\n    r._field == \"status\"\n  )\n  |> group(columns: [\"ap_name\"])\n  |> last()\n  |> filter(fn: (r) => r._value == 0)\n  |> group()\n  |> count()",
+          "refId": "A"
+        }
+      ],
+      "title": "APs Offline",
+      "type": "stat"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "id": 10,
+      "panels": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ef9fatdyz6328f"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "light-blue"
+                  },
+                  {
+                    "color": "semi-dark-green",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "/ 24"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 4,
+            "x": 0,
+            "y": 18
+          },
+          "id": 3,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "limit": 24,
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "ef9fatdyz6328f"
+              },
+              "hide": false,
+              "query": "from(bucket: \"my-bucket\")\n  |> range(start: -5m)\n  |> filter(fn: (r) =>\n    r._measurement == \"switch_port_metrics\" and\n    r._field == \"status\" and\n    r.switch == \"icx8200\" // Filter for the first switch\n  )\n  |> group(columns: [\"port\"])\n  |> last()\n  |> filter(fn: (r) => r._value == 1) // Filter for \"Up\" status\n  |> group()\n  |> count()",
+              "refId": "A"
+            }
+          ],
+          "title": "ICX 8200 - Ports Up",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ef9fatdyz6328f"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "/ 24"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 4,
+            "x": 4,
+            "y": 18
+          },
+          "id": 8,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "ef9fatdyz6328f"
+              },
+              "query": "from(bucket: \"my-bucket\")\n  |> range(start: -5m)\n  |> filter(fn: (r) =>\n    r._measurement == \"switch_port_metrics\" and\n    r._field == \"status\" and\n    r.switch == \"icx8200\" // Filter for the first switch\n  )\n  |> group(columns: [\"port\"])\n  |> last()\n  |> filter(fn: (r) => r._value == 0) // Filter for \"Down\" status\n  |> group()\n  |> count()",
+              "refId": "A"
+            }
+          ],
+          "title": "ICX 8200 - Ports Down",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ef9fatdyz6328f"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text"
+                  },
+                  {
+                    "color": "text",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "/ 24"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 4,
+            "x": 8,
+            "y": 18
+          },
+          "id": 7,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "ef9fatdyz6328f"
+              },
+              "query": "from(bucket: \"my-bucket\")\n  |> range(start: -5m)\n  |> filter(fn: (r) =>\n    r._measurement == \"switch_port_metrics\" and\n    r._field == \"status\" and\n    r.switch == \"icx8200\"\n  )\n  |> group(columns: [\"port\"])\n  |> last()\n  |> filter(fn: (r) => r._value == 2) // Filter for \"Empty\" status\n  |> group()\n  |> count()",
+              "refId": "A"
+            }
+          ],
+          "title": "ICX 8200 - Ports Empty",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ef9fatdyz6328f"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "light-blue"
+                  },
+                  {
+                    "color": "semi-dark-green",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "/ 24"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 4,
+            "x": 12,
+            "y": 18
+          },
+          "id": 9,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "limit": 24,
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "ef9fatdyz6328f"
+              },
+              "hide": false,
+              "query": "from(bucket: \"my-bucket\")\n  |> range(start: -5m)\n  |> filter(fn: (r) =>\n    r._measurement == \"switch_port_metrics\" and\n    r._field == \"status\" and\n    r.switch == \"icx8100\" // Filter for the first switch\n  )\n  |> group(columns: [\"port\"])\n  |> last()\n  |> filter(fn: (r) => r._value == 1) // Filter for \"Up\" status\n  |> group()\n  |> count()",
+              "refId": "A"
+            }
+          ],
+          "title": "ICX 8100 - Ports Up",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ef9fatdyz6328f"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "/ 24"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 4,
+            "x": 16,
+            "y": 18
+          },
+          "id": 4,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "ef9fatdyz6328f"
+              },
+              "query": "from(bucket: \"my-bucket\")\n  |> range(start: -5m)\n  |> filter(fn: (r) =>\n    r._measurement == \"switch_port_metrics\" and\n    r._field == \"status\" and\n    r.switch == \"icx8100\" // Filter for the first switch\n  )\n  |> group(columns: [\"port\"])\n  |> last()\n  |> filter(fn: (r) => r._value == 0) // Filter for \"Down\" status\n  |> group()\n  |> count()",
+              "refId": "A"
+            }
+          ],
+          "title": "ICX 8100 - Ports Down",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ef9fatdyz6328f"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text"
+                  },
+                  {
+                    "color": "text",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "/ 24"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 4,
+            "x": 20,
+            "y": 18
+          },
+          "id": 5,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "ef9fatdyz6328f"
+              },
+              "query": "from(bucket: \"my-bucket\")\n  |> range(start: -5m)\n  |> filter(fn: (r) =>\n    r._measurement == \"switch_port_metrics\" and\n    r._field == \"status\" and\n    r.switch == \"icx8100\"\n  )\n  |> group(columns: [\"port\"])\n  |> last()\n  |> filter(fn: (r) => r._value == 2) // Filter for \"Empty\" status\n  |> group()\n  |> count()",
+              "refId": "A"
+            }
+          ],
+          "title": "ICX 8100 - Ports Empty",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ef9fatdyz6328f"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "semi-dark-red",
+                      "index": 0,
+                      "text": "Down"
+                    },
+                    "1": {
+                      "color": "green",
+                      "index": 1,
+                      "text": "Up"
+                    },
+                    "2": {
+                      "color": "text",
+                      "index": 2,
+                      "text": "Empty"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 25
+          },
+          "id": 1,
+          "options": {
+            "infinitePan": false,
+            "inlineEditing": true,
+            "panZoom": false,
+            "root": {
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                },
+                "image": {
+                  "fixed": "https://logiqon.co.nz/images/Products/wireless/switching/Ruckus/ICX8200/RUCKUS%20ICX%208200-24F%200L5A5964%20-%20ICX%208200-24F%20Mockupr.jpg",
+                  "mode": "fixed"
+                },
+                "size": "fill"
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                },
+                "width": 0
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "elements": [
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_1",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "1",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 1",
+                  "placement": {
+                    "height": 32,
+                    "left": 428,
+                    "top": 162,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_2",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "2",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 2",
+                  "placement": {
+                    "height": 32,
+                    "left": 456,
+                    "top": 162,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_3",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "3",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 3",
+                  "placement": {
+                    "height": 32,
+                    "left": 485,
+                    "top": 162,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_4",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "4",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 4",
+                  "placement": {
+                    "height": 32,
+                    "left": 514,
+                    "top": 162,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_5",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "5",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 5",
+                  "placement": {
+                    "height": 32,
+                    "left": 542,
+                    "top": 162,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_6",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "6",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 6",
+                  "placement": {
+                    "height": 32,
+                    "left": 570,
+                    "top": 162,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_7",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "7",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 7",
+                  "placement": {
+                    "height": 32,
+                    "left": 426,
+                    "top": 124,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_8",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "8",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 8",
+                  "placement": {
+                    "height": 32,
+                    "left": 455,
+                    "top": 124,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_19",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "9",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 9",
+                  "placement": {
+                    "height": 32,
+                    "left": 484,
+                    "top": 124,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_10",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "10",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 10",
+                  "placement": {
+                    "height": 32,
+                    "left": 513,
+                    "top": 124,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_11",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "11",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 11",
+                  "placement": {
+                    "height": 32,
+                    "left": 538,
+                    "top": 124,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_12",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "12",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 12",
+                  "placement": {
+                    "height": 32,
+                    "left": 567,
+                    "top": 124,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_13",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "13",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 13",
+                  "placement": {
+                    "height": 32,
+                    "left": 613,
+                    "top": 162,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_14",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "14",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 14",
+                  "placement": {
+                    "height": 32,
+                    "left": 642,
+                    "top": 162,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_15",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "15",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 15",
+                  "placement": {
+                    "height": 32,
+                    "left": 672,
+                    "top": 162,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_16",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "16",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 16",
+                  "placement": {
+                    "height": 32,
+                    "left": 700,
+                    "top": 162,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_17",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "17",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 17",
+                  "placement": {
+                    "height": 32,
+                    "left": 729,
+                    "top": 162,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_18",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "18",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 18",
+                  "placement": {
+                    "height": 32,
+                    "left": 758,
+                    "top": 162,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_19",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "19",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 19",
+                  "placement": {
+                    "height": 32,
+                    "left": 612,
+                    "top": 124,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_20",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "20",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 20",
+                  "placement": {
+                    "height": 32,
+                    "left": 641,
+                    "top": 124,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_21",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "21",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 21",
+                  "placement": {
+                    "height": 32,
+                    "left": 670,
+                    "top": 124,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_22",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "22",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 22",
+                  "placement": {
+                    "height": 32,
+                    "left": 699,
+                    "top": 124,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_23",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "23",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 23",
+                  "placement": {
+                    "height": 32,
+                    "left": 728,
+                    "top": 124,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_24",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "24",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 24",
+                  "placement": {
+                    "height": 32,
+                    "left": 757,
+                    "top": 124,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                }
+              ],
+              "name": "Element 1767776896551",
+              "placement": {
+                "height": 100,
+                "left": 0,
+                "top": 0,
+                "width": 100
+              },
+              "type": "frame"
+            },
+            "showAdvancedTypes": true
+          },
+          "pluginVersion": "10.4.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "ef9fatdyz6328f"
+              },
+              "query": "from(bucket: \"my-bucket\")\n  |> range(start: -5m)\n  |> filter(fn: (r) =>\n    r._measurement == \"switch_port_metrics\" and\n    r._field == \"status\" and\n    r.switch == \"icx8200\"\n  )\n  |> group(columns: [\"port\"])\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\", \"port\"])",
+              "refId": "A"
+            }
+          ],
+          "title": "Ruckus ICX 8200 Switch",
+          "type": "canvas"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ef9fatdyz6328f"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "semi-dark-red",
+                      "index": 0,
+                      "text": "Down"
+                    },
+                    "1": {
+                      "color": "green",
+                      "index": 1,
+                      "text": "Up"
+                    },
+                    "2": {
+                      "color": "text",
+                      "index": 2,
+                      "text": "Empty"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 25
+          },
+          "id": 6,
+          "options": {
+            "infinitePan": false,
+            "inlineEditing": true,
+            "panZoom": false,
+            "root": {
+              "background": {
+                "color": {
+                  "fixed": "transparent"
+                },
+                "image": {
+                  "fixed": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTC-iQdQTvhViqbKyNm-kVKYqFmvfF8uubH6A&s",
+                  "mode": "fixed"
+                },
+                "size": "fill"
+              },
+              "border": {
+                "color": {
+                  "fixed": "dark-green"
+                },
+                "width": 0
+              },
+              "constraint": {
+                "horizontal": "left",
+                "vertical": "top"
+              },
+              "elements": [
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_1",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "1",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 1",
+                  "placement": {
+                    "height": 32,
+                    "left": 456,
+                    "top": 192,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_2",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "2",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 2",
+                  "placement": {
+                    "height": 32,
+                    "left": 484,
+                    "top": 192,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_3",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "3",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 3",
+                  "placement": {
+                    "height": 32,
+                    "left": 513,
+                    "top": 192,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_4",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "4",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 4",
+                  "placement": {
+                    "height": 32,
+                    "left": 542,
+                    "top": 192,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_5",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "5",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 5",
+                  "placement": {
+                    "height": 32,
+                    "left": 570,
+                    "top": 192,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_6",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "6",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 6",
+                  "placement": {
+                    "height": 32,
+                    "left": 599,
+                    "top": 192,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_7",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "7",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 7",
+                  "placement": {
+                    "height": 32,
+                    "left": 455,
+                    "top": 145,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_8",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "8",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 8",
+                  "placement": {
+                    "height": 32,
+                    "left": 484,
+                    "top": 145,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_19",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "9",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 9",
+                  "placement": {
+                    "height": 32,
+                    "left": 513,
+                    "top": 145,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_10",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "10",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 10",
+                  "placement": {
+                    "height": 32,
+                    "left": 542,
+                    "top": 145,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_11",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "11",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 11",
+                  "placement": {
+                    "height": 32,
+                    "left": 570,
+                    "top": 145,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_12",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "12",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 12",
+                  "placement": {
+                    "height": 32,
+                    "left": 597,
+                    "top": 145,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_13",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "13",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 13",
+                  "placement": {
+                    "height": 32,
+                    "left": 638,
+                    "top": 192,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_14",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "14",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 14",
+                  "placement": {
+                    "height": 32,
+                    "left": 667,
+                    "top": 192,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_15",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "15",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 15",
+                  "placement": {
+                    "height": 32,
+                    "left": 697,
+                    "top": 192,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_16",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "16",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 16",
+                  "placement": {
+                    "height": 32,
+                    "left": 725,
+                    "top": 192,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_17",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "17",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 17",
+                  "placement": {
+                    "height": 32,
+                    "left": 752,
+                    "top": 192,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_18",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "18",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 18",
+                  "placement": {
+                    "height": 32,
+                    "left": 776,
+                    "top": 192,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_19",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "19",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 19",
+                  "placement": {
+                    "height": 32,
+                    "left": 634,
+                    "top": 145,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_20",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "20",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 20",
+                  "placement": {
+                    "height": 32,
+                    "left": 663,
+                    "top": 145,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_21",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "21",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 21",
+                  "placement": {
+                    "height": 32,
+                    "left": 694,
+                    "top": 145,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_22",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "22",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 22",
+                  "placement": {
+                    "height": 32,
+                    "left": 723,
+                    "top": 145,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_23",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "23",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 23",
+                  "placement": {
+                    "height": 32,
+                    "left": 752,
+                    "top": 145,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                },
+                {
+                  "background": {
+                    "color": {
+                      "fixed": "transparent"
+                    },
+                    "image": {
+                      "field": "",
+                      "fixed": "",
+                      "mode": "fixed"
+                    },
+                    "size": "fill"
+                  },
+                  "border": {
+                    "color": {
+                      "field": "port_24",
+                      "fixed": "dark-green"
+                    },
+                    "width": 5
+                  },
+                  "config": {
+                    "align": "center",
+                    "color": {
+                      "fixed": "text"
+                    },
+                    "size": 14,
+                    "text": {
+                      "fixed": "24",
+                      "mode": "fixed"
+                    },
+                    "valign": "bottom"
+                  },
+                  "connections": [],
+                  "constraint": {
+                    "horizontal": "left",
+                    "vertical": "top"
+                  },
+                  "name": "Port 24",
+                  "placement": {
+                    "height": 32,
+                    "left": 776,
+                    "top": 145,
+                    "width": 29
+                  },
+                  "type": "rectangle"
+                }
+              ],
+              "name": "Element 1767776896551",
+              "placement": {
+                "height": 100,
+                "left": 0,
+                "top": 0,
+                "width": 100
+              },
+              "type": "frame"
+            },
+            "showAdvancedTypes": true
+          },
+          "pluginVersion": "10.4.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "ef9fatdyz6328f"
+              },
+              "query": "from(bucket: \"my-bucket\")\n  |> range(start: -5m)\n  |> filter(fn: (r) =>\n    r._measurement == \"switch_port_metrics\" and\n    r._field == \"status\" and\n    r.switch == \"icx8100\"\n  )\n  |> group(columns: [\"port\"])\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\", \"port\"])",
+              "refId": "A"
+            }
+          ],
+          "title": "Ruckus ICX 8100 Switch",
+          "type": "canvas"
+        }
+      ],
+      "title": "Switchs",
+      "type": "row"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Network Monitoring",
+  "uid": "af9fq34uvlqf4d",
+  "version": 33,
+  "weekStart": ""
+}

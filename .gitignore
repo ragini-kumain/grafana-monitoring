@@ -1,0 +1,15 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# InfluxDB runtime data
+data/
+influxdb2_data/
+
+# Local / backup
+*.bak
+*.log
+
+# OS
+.DS_Store

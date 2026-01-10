@@ -1,0 +1,65 @@
+auths:
+  public_v2c:
+    version: 2
+    community: public
+
+modules:
+  system:
+    walk:
+      - 1.3.6.1.2.1.25.2.3      # Storage
+      - 1.3.6.1.2.1.25.3.3      # CPU
+      - 1.3.6.1.2.1.2.2.1       # Interfaces (ifTable) 
+      - 1.3.6.1.2.1.31.1.1.1    # 64-bit Interface Counters (ifXTable) 
+
+    metrics:
+      # -------- CPU --------
+      - name: hrProcessorLoad
+        oid: 1.3.6.1.2.1.25.3.3.1.2
+        type: gauge
+        indexes:
+          - labelname: hrProcessorIndex
+            type: gauge
+
+      # -------- STORAGE --------
+      - name: hrStorageDescr
+        oid: 1.3.6.1.2.1.25.2.3.1.3
+        type: DisplayString
+        indexes:
+          - labelname: hrStorageIndex
+            type: gauge
+
+      - name: hrStorageSize
+        oid: 1.3.6.1.2.1.25.2.3.1.5
+        type: gauge
+        indexes:
+          - labelname: hrStorageIndex
+            type: gauge
+
+      - name: hrStorageUsed
+        oid: 1.3.6.1.2.1.25.2.3.1.6
+        type: gauge
+        indexes:
+          - labelname: hrStorageIndex
+            type: gauge
+
+      # -------- NETWORK INTERFACES (NEW SECTION) --------
+      - name: ifDescr
+        oid: 1.3.6.1.2.1.2.2.1.2
+        type: DisplayString
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+      
+      - name: ifHCInOctets
+        oid: 1.3.6.1.2.1.31.1.1.1.6
+        type: counter
+        indexes:
+          - labelname: ifIndex
+            type: gauge
+
+      - name: ifHCOutOctets
+        oid: 1.3.6.1.2.1.31.1.1.1.10
+        type: counter
+        indexes:
+          - labelname: ifIndex
+            type: gauge

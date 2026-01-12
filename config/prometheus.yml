@@ -23,7 +23,8 @@ scrape_configs:
       - target_label: __address__
         replacement: localhost:9116
 
-  - job_name: 'mssql'
+  - job_name: "sql_exporter"
+    scrape_interval: 15s
     static_configs:
       - targets:
-          - 172.18.0.5:4000
+          - "localhost:9399"

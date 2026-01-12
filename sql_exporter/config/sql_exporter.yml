@@ -11,7 +11,8 @@ jobs:
       - mssql_lock_waits
     static_configs:
       - targets:
-          sql1: "sqlserver://sa:StrongPass%40123@172.19.0.2:1433?database=master&encrypt=false&TrustServerCertificate=true"
+          sql1: "sqlserver://sa:StrongPass%40123@sql1:1433?database=master&encrypt=false&TrustServerCertificate=true"
+          sql2: "sqlserver://sa:StrongPass%40123@sql2:1433?database=master&encrypt=false&TrustServerCertificate=true"
 
 collectors:
   # -------------------------------------------------

@@ -56,6 +56,45 @@ services:
     restart: unless-stopped
     # Purpose: Visualization platform. Will connect to both InfluxDB and Prometheus as data sources.
 
+  # --- Managed Database Instances ---
+  sql1:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sql1
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=StrongPass@123
+    networks:
+      - monitoring_net
+    restart: unless-stopped
+
+  sql2:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sql2
+    ports:
+      - "1434:1433" # Maps host 1434 to container 1433
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=StrongPass@123
+    networks:
+      - monitoring_net
+    restart: unless-stopped
+    
+  sql_exporter:
+    image: burningalchemist/sql_exporter:latest
+    container_name: sql_exporter
+    ports:
+      - "9399:9399"
+    command:
+      - "--config.file=/etc/sql_exporter/config.yml"
+    volumes:
+      - ./sql_exporter/config/sql_exporter.yml:/etc/sql_exporter/config.yml:ro
+    networks:
+      - monitoring_net
+    depends_on:
+      - sql1
+
 volumes:
   # Define persistent storage volumes for databases and Grafana configuration.
   influxdb_data: {}

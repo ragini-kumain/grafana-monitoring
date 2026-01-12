@@ -1,3 +1,5 @@
+#filename: prometheus.yml
+
 global:
   scrape_interval: 30s
 
@@ -20,3 +22,8 @@ scrape_configs:
         target_label: instance
       - target_label: __address__
         replacement: localhost:9116
+
+  - job_name: 'mssql'
+    static_configs:
+      - targets:
+          - 172.18.0.5:4000

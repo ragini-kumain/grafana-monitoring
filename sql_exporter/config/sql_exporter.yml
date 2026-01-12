@@ -1,0 +1,81 @@
+global:
+  scrape_timeout: 10s
+
+jobs:
+  - job_name: mssql
+    collectors:
+      - health_check
+      - mssql_connections
+      - mssql_cpu_waits
+      - mssql_disk_waits
+      - mssql_lock_waits
+    static_configs:
+      - targets:
+          sql1: "sqlserver://sa:StrongPass%40123@172.19.0.2:1433?database=master&encrypt=false&TrustServerCertificate=true"
+
+collectors:
+  # -------------------------------------------------
+  # Basic connectivity check
+  # -------------------------------------------------
+  - collector_name: health_check
+    metrics:
+      - metric_name: mssql_up
+        type: gauge
+        help: "Basic SQL connectivity check"
+        values: [val]
+        query: "SELECT 1 AS val"
+
+  # -------------------------------------------------
+  # Active SQL connections
+  # -------------------------------------------------
+  - collector_name: mssql_connections
+    metrics:
+      - metric_name: mssql_connections
+        type: gauge
+        help: "Number of active SQL connections"
+        values: [connections]
+        query: |
+          SELECT COUNT(*) AS connections
+          FROM sys.dm_exec_connections
+
+  # -------------------------------------------------
+  # CPU wait (SOS_SCHEDULER_YIELD)
+  # -------------------------------------------------
+  - collector_name: mssql_cpu_waits
+    metrics:
+      - metric_name: mssql_cpu_wait_ms
+        type: gauge
+        help: "CPU scheduler wait time (SOS_SCHEDULER_YIELD)"
+        values: [wait_time_ms]
+        query: |
+          SELECT COALESCE(SUM(wait_time_ms), 0) AS wait_time_ms
+          FROM sys.dm_os_wait_stats
+          WHERE wait_type = 'SOS_SCHEDULER_YIELD'
+
+  # -------------------------------------------------
+  # Disk wait (PAGEIOLATCH*)
+  # -------------------------------------------------
+  - collector_name: mssql_disk_waits
+    metrics:
+      - metric_name: mssql_disk_wait_ms
+        type: gauge
+        help: "Disk IO wait time (PAGEIOLATCH)"
+        values: [wait_time_ms]
+        query: |
+          SELECT COALESCE(SUM(wait_time_ms), 0) AS wait_time_ms
+          FROM sys.dm_os_wait_stats
+          WHERE wait_type LIKE 'PAGEIOLATCH%'
+
+  # -------------------------------------------------
+  # Lock wait (LCK_M_*)
+  # -------------------------------------------------
+  - collector_name: mssql_lock_waits
+    metrics:
+      - metric_name: mssql_lock_wait_ms
+        type: gauge
+        help: "Lock wait time (LCK_M_)"
+        values: [wait_time_ms]
+        query: |
+          SELECT COALESCE(SUM(wait_time_ms), 0) AS wait_time_ms
+          FROM sys.dm_os_wait_stats
+          WHERE wait_type LIKE 'LCK_M_%'

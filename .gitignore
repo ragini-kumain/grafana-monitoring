@@ -13,3 +13,7 @@ influxdb2_data/
 
 # OS
 .DS_Store
+
+.env
+
+bak/
